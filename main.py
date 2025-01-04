@@ -7,19 +7,21 @@ import json
 
 MAX_STEPS = 1000
 SPEED = 20  # steps per second
+DEFAULT_X = 0
+DEFAULT_K = np.random.randint(0, 2**32)
+DEFAULT_SIGMA = 1.0
+DEFAULT_BETA = 0.01
 
 class RandomWalkApp:
-    def __init__(self, master):
+    def __init__(self, master, x=DEFAULT_X, k=DEFAULT_K, sigma=DEFAULT_SIGMA, beta=DEFAULT_BETA):
         self.master = master
         self.master.title("Random Walk Simulator")
 
-        self.x_buffer = [0]
-        self.k_buffer = [np.random.randint(0, 2**32)]
-        self.sigma_buffer = [1.0]
-        self.beta_buffer = [0.01]
+        self._x_buffer = [x]
+        self._k_buffer = [k]
+        self._sigma_buffer = [sigma]
+        self._beta_buffer = [beta]
 
-        self.sigma = 1.0
-        self.beta = 0.01
         self.paused = False
 
         self.figure, self.ax = plt.subplots(figsize=(8, 6))
@@ -29,18 +31,34 @@ class RandomWalkApp:
         self.create_controls()
         self.update_walk()
 
+    @property
+    def sigma(self):
+        return self._sigma_buffer[-1]
+
+    @sigma.setter
+    def sigma(self, value):
+        self._sigma_buffer[-1] = value
+
+    @property
+    def beta(self):
+        return self._beta_buffer[-1]
+
+    @beta.setter
+    def beta(self, value):
+        self._beta_buffer[-1] = value
+
     def create_controls(self):
         controls_frame = ttk.Frame(self.master)
         controls_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.create_parameter_control(controls_frame, "Sigma", "sigma", 0.1, 10, 0.1)
-        self.create_parameter_control(controls_frame, "Beta", "beta", 0, 1, 0.01)
+        self.create_parameter_control(controls_frame, "Sigma", "sigma")
+        self.create_parameter_control(controls_frame, "Beta", "beta")
 
         ttk.Button(controls_frame, text="Pause/Resume", command=self.toggle_pause).pack(side=tk.LEFT)
         ttk.Button(controls_frame, text="Save State", command=self.save_state).pack(side=tk.LEFT)
         ttk.Button(controls_frame, text="Load State", command=self.load_state).pack(side=tk.LEFT)
 
-    def create_parameter_control(self, parent, label, attr, min_val, max_val, step):
+    def create_parameter_control(self, parent, label, attr):
         frame = ttk.Frame(parent)
         frame.pack(side=tk.LEFT, padx=5)
 
@@ -54,14 +72,13 @@ class RandomWalkApp:
         def update(delta):
             try:
                 value = float(var.get()) + delta
-                value = max(min_val, min(max_val, value))
                 var.set(f"{value:.4f}")
                 setattr(self, attr, value)
             except ValueError:
                 pass
 
-        ttk.Button(frame, text="-", command=lambda: update(-step), width=2).pack(side=tk.LEFT)
-        ttk.Button(frame, text="+", command=lambda: update(step), width=2).pack(side=tk.LEFT)
+        ttk.Button(frame, text="-", command=lambda: update(-0.1), width=2).pack(side=tk.LEFT)
+        ttk.Button(frame, text="+", command=lambda: update(0.1), width=2).pack(side=tk.LEFT)
 
     def update_parameter(self, attr, var):
         try:
@@ -79,45 +96,36 @@ class RandomWalkApp:
         if self.paused:
             return
 
-        # Check if sigma or beta has been updated
-        if self.sigma != self.sigma_buffer[-1] or self.beta != self.beta_buffer[-1]:
-            self.sigma_buffer.append(self.sigma)
-            self.beta_buffer.append(self.beta)
+        self._sigma_buffer.append(self.sigma)
+        self._beta_buffer.append(self.beta)
 
-        # Generate new RNG key
         new_key = np.random.randint(0, 2**32)
-        self.k_buffer.append(new_key)
+        self._k_buffer.append(new_key)
 
-        # Calculate new x value
         rng = np.random.default_rng(new_key)
-        step = rng.normal(0, self.sigma) - self.beta * self.x_buffer[-1]
-        new_x = self.x_buffer[-1] + step
-        self.x_buffer.append(new_x)
+        step = rng.normal(0, self.sigma) - self.beta * self._x_buffer[-1]
+        new_x = self._x_buffer[-1] + step
+        self._x_buffer.append(new_x)
 
-        # Trim buffers if they exceed MAX_STEPS
-        if len(self.x_buffer) > MAX_STEPS:
-            self.x_buffer = self.x_buffer[-MAX_STEPS:]
-            self.k_buffer = self.k_buffer[-MAX_STEPS:]
-            self.sigma_buffer = self.sigma_buffer[-MAX_STEPS:]
-            self.beta_buffer = self.beta_buffer[-MAX_STEPS:]
+        if len(self._x_buffer) > MAX_STEPS:
+            self._x_buffer = self._x_buffer[-MAX_STEPS:]
+            self._k_buffer = self._k_buffer[-MAX_STEPS:]
+            self._sigma_buffer = self._sigma_buffer[-MAX_STEPS:]
+            self._beta_buffer = self._beta_buffer[-MAX_STEPS:]
 
-        # Update plot
         self.ax.clear()
-        self.ax.plot(self.x_buffer)
+        self.ax.plot(self._x_buffer)
         self.ax.set_title("Random Walk")
         self.canvas.draw()
 
-        if not self.paused:
-            self.master.after(int(1000 / SPEED), self.update_walk)
+        self.master.after(int(1000 / SPEED), self.update_walk)
 
     def save_state(self):
         state = {
-            "x_buffer": self.x_buffer,
-            "k_buffer": self.k_buffer,
-            "sigma_buffer": self.sigma_buffer,
-            "beta_buffer": self.beta_buffer,
-            "sigma": self.sigma,
-            "beta": self.beta
+            "x_buffer": self._x_buffer,
+            "k_buffer": self._k_buffer,
+            "sigma_buffer": self._sigma_buffer,
+            "beta_buffer": self._beta_buffer,
         }
         file_path = filedialog.asksaveasfilename(defaultextension=".json")
         if file_path:
@@ -129,18 +137,16 @@ class RandomWalkApp:
         if file_path:
             with open(file_path, 'r') as f:
                 state = json.load(f)
-            self.x_buffer = state["x_buffer"]
-            self.k_buffer = state["k_buffer"]
-            self.sigma_buffer = state["sigma_buffer"]
-            self.beta_buffer = state["beta_buffer"]
-            self.sigma = state["sigma"]
-            self.beta = state["beta"]
+            self._x_buffer = state["x_buffer"]
+            self._k_buffer = state["k_buffer"]
+            self._sigma_buffer = state["sigma_buffer"]
+            self._beta_buffer = state["beta_buffer"]
             self.update_walk()
 
 def main():
     root = tk.Tk()
     app = RandomWalkApp(root)
-    root.tk.mainloop()
+    root.mainloop()
 
 if __name__ == "__main__":
     main()
