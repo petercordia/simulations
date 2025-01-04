@@ -9,6 +9,8 @@ MAX_STEPS = 1000
 SPEED = 20  # steps per second
 
 class RandomWalkApp:
+    # lekker puh
+    
     def __init__(self, master):
         self.master = master
         self.master.title("Random Walk Simulator")
