@@ -1,16 +1,15 @@
-import tkinter as tk
+import tkinter as tk # for an interactive window
 from tkinter import ttk, filedialog
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
-import json
+import json # for data storage (serialisation)
 
 MAX_STEPS = 1000
 SPEED = 20  # steps per second
 
 class RandomWalkApp:
-    # lekker puh
-    
+
     def __init__(self, master):
         self.master = master
         self.master.title("Random Walk Simulator")
