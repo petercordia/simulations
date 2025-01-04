@@ -3,12 +3,17 @@ from tkinter import ttk, filedialog
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import json
-from jax import random
+from jax import random, Array
 from time import time
 
 MAX_STEPS = 1000
 
 class RandomWalkApp:
+    buffer = list[float]
+    k_buffer = list[Array]
+    sigma_buffer = list[float]
+    beta_buffer : list[float]
+
     def __init__(self, master, x=0, rng_seed=None, sigma=1.0, beta=0.01, speed=20):
         if rng_seed is None:
             rng_seed = int(time())
@@ -111,7 +116,7 @@ class RandomWalkApp:
         key, subkey = random.split(self.k)
         self.k_buffer.append(key)
 
-        new_x = self.x * (1 - self.beta) + random.normal(subkey) * self.sigma
+        new_x = float(self.x * (1 - self.beta) + random.normal(subkey) * self.sigma)
         self.x_buffer.append(new_x)
 
 
@@ -131,7 +136,7 @@ class RandomWalkApp:
     def save_state(self):
         state = {
             "x_buffer": self.x_buffer,
-            "k_buffer": self.k_buffer,
+            "k_buffer": [[int(x) for x in random.key_data(key)] for key in self.k_buffer],
             "sigma_buffer": self.sigma_buffer,
             "beta_buffer": self.beta_buffer,
         }
@@ -146,7 +151,7 @@ class RandomWalkApp:
             with open(file_path, 'r') as f:
                 state = json.load(f)
             self.x_buffer = state["x_buffer"]
-            self.k_buffer = state["k_buffer"]
+            self.k_buffer = [random.wrap_key_data(Array(key_data)) for key_data in state["k_buffer"]]
             self.sigma_buffer = state["sigma_buffer"]
             self.beta_buffer = state["beta_buffer"]
             self.update_walk()
