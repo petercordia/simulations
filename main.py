@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import json
 from jax import random
+from time import time
 
 MAX_STEPS = 1000
-SPEED = 20  # steps per second
 
 class RandomWalkApp:
-    def __init__(self, master, x=0, rng_seed=0, sigma=1.0, beta=0.01):
+    def __init__(self, master, x=0, rng_seed=None, sigma=1.0, beta=0.01, speed=20):
+        if rng_seed is None:
+            rng_seed = int(time())
 
         self.master = master
         self.master.title("Random Walk Simulator")
@@ -18,6 +20,7 @@ class RandomWalkApp:
         self.k_buffer = [random.key(rng_seed)]
         self.sigma_buffer = [sigma]
         self.beta_buffer = [beta]
+        self.speed = speed
 
         self.paused = False
 
@@ -58,6 +61,7 @@ class RandomWalkApp:
 
         self.create_parameter_control(controls_frame, "Sigma", "sigma", 0.1)
         self.create_parameter_control(controls_frame, "Beta", "beta", 0.01)
+        self.create_parameter_control(controls_frame, "Speed", "speed", 1)
 
         ttk.Button(controls_frame, text="Pause/Resume", command=self.toggle_pause).pack(side=tk.LEFT)
         ttk.Button(controls_frame, text="Save State", command=self.save_state).pack(side=tk.LEFT)
@@ -122,7 +126,7 @@ class RandomWalkApp:
         self.ax.set_title("Random Walk")
         self.canvas.draw()
 
-        self.master.after(int(1000 / SPEED), self.update_walk)
+        self.master.after(int(1000 / self.speed), self.update_walk)
 
     def save_state(self):
         state = {
