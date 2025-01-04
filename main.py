@@ -47,6 +47,10 @@ class RandomWalkApp:
     def beta(self, value):
         self.beta_buffer[-1] = value
 
+    @property
+    def x(self):
+        return self.x_buffer[-1]
+
     def create_controls(self):
         controls_frame = ttk.Frame(self.master)
         controls_frame.pack(side=tk.BOTTOM, fill=tk.X)
@@ -103,8 +107,7 @@ class RandomWalkApp:
         self.k_buffer.append(new_key)
 
         rng = np.random.default_rng(new_key)
-        step = rng.normal(0, self.sigma) - self.beta * self.x_buffer[-1]
-        new_x = self.x_buffer[-1] + step
+        new_x = self.x * (1-self.beta) + rng.normal(0, self.sigma)
         self.x_buffer.append(new_x)
 
         if len(self.x_buffer) > MAX_STEPS:
