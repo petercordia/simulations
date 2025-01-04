@@ -2,23 +2,20 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import numpy as np
 import json
+from jax import random
 
 MAX_STEPS = 1000
 SPEED = 20  # steps per second
-DEFAULT_X = 0
-DEFAULT_K = np.random.randint(0, 2**32)
-DEFAULT_SIGMA = 1.0
-DEFAULT_BETA = 0.01
 
 class RandomWalkApp:
-    def __init__(self, master, x=DEFAULT_X, k=DEFAULT_K, sigma=DEFAULT_SIGMA, beta=DEFAULT_BETA):
+    def __init__(self, master, x=0, rng_seed=0, sigma=1.0, beta=0.01):
+
         self.master = master
         self.master.title("Random Walk Simulator")
 
         self.x_buffer = [x]
-        self.k_buffer = [k]
+        self.k_buffer = [random.key(rng_seed)]
         self.sigma_buffer = [sigma]
         self.beta_buffer = [beta]
 
@@ -51,6 +48,10 @@ class RandomWalkApp:
     def x(self):
         return self.x_buffer[-1]
 
+    @property
+    def k(self):
+        return self.k_buffer[-1]
+    
     def create_controls(self):
         controls_frame = ttk.Frame(self.master)
         controls_frame.pack(side=tk.BOTTOM, fill=tk.X)
@@ -103,12 +104,12 @@ class RandomWalkApp:
         self.sigma_buffer.append(self.sigma)
         self.beta_buffer.append(self.beta)
 
-        new_key = np.random.randint(0, 2**32)
-        self.k_buffer.append(new_key)
+        key, subkey = random.split(self.k)
+        self.k_buffer.append(key)
 
-        rng = np.random.default_rng(new_key)
-        new_x = self.x * (1-self.beta) + rng.normal(0, self.sigma)
+        new_x = self.x * (1 - self.beta) + random.normal(subkey) * self.sigma
         self.x_buffer.append(new_x)
+
 
         if len(self.x_buffer) > MAX_STEPS:
             self.x_buffer = self.x_buffer[-MAX_STEPS:]
